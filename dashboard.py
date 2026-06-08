@@ -8,6 +8,7 @@ from collections import defaultdict
 from io import BytesIO
 from datetime import datetime
 import os
+import zipfile
 
 # Configuración de la página
 st.set_page_config(
@@ -30,7 +31,7 @@ MARCAS_COMPLETAS = [
     'CANON', 'BOOKEYE', 'JFA TECHNOLOGY', 'AMC', 'MAXTIC', 'SANDISK', 'KINGSTON', 'ADATA', 'NEW KRAL'
 ]
 
-# Archivo para guardar el progreso
+# Archivos para guardar el progreso
 PROGRESS_FILE = "progreso_marcas.json"
 SERIES_PROCESSED_FILE = "series_procesadas.json"
 
@@ -191,6 +192,18 @@ st.markdown("""
     [data-testid="stMetricLabel"] {
         color: #cbd5e1;
     }
+    
+    /* Dataframe */
+    .stDataFrame {
+        background: #1e293b;
+        border-radius: 12px;
+        border: 1px solid #334155;
+    }
+    
+    /* Checkboxes */
+    .stCheckbox label {
+        color: #e2e8f0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -315,6 +328,9 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
     encontradas = []
     no_encontradas = []
     
+    # Diccionario para rastrear qué series ya asignamos a qué fichas
+    series_asignadas = {}
+    
     for serie in nuevas_series_unicas:
         serie_limpia = serie.strip()
         if not serie_limpia:
@@ -324,15 +340,23 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
         encontrada = False
         for _, row in df.iterrows():
             if serie_limpia in str(row['Producto']):
-                encontrada = True
-                st.session_state.progreso[row['ID']] = True
-                encontradas.append({
-                    'Serie': serie_limpia,
-                    'Producto': row['Producto'][:200],
-                    'Marca': row['Marca'],
-                    'Categoría': row['Categoría']
-                })
-                break
+                # Verificar si esta serie ya fue asignada a otra ficha
+                if serie_limpia not in series_asignadas:
+                    series_asignadas[serie_limpia] = row['ID']
+                    st.session_state.progreso[row['ID']] = True
+                    encontradas.append({
+                        'Serie': serie_limpia,
+                        'Producto': row['Producto'][:200],
+                        'Marca': row['Marca'],
+                        'Categoría': row['Categoría'],
+                        'ID_Ficha': row['ID']
+                    })
+                    encontrada = True
+                    break
+                else:
+                    # Ya fue asignada, no marcar otra vez
+                    encontrada = True
+                    break
         
         if not encontrada:
             no_encontradas.append(serie_limpia)
@@ -349,6 +373,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
     output = BytesIO()
     
     try:
+        # Intentar con openpyxl primero
         from openpyxl import Workbook
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             # Hoja 1: Series encontradas
@@ -374,7 +399,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
             resumen_marcas['Porcentaje'] = (resumen_marcas['Completadas'] / resumen_marcas['Total Fichas'] * 100).round(1)
             resumen_marcas.to_excel(writer, sheet_name='Resumen por Marca', index=False)
             
-            # Hoja 4: Detalle por categoría de cada marca
+            # Hoja 4: Detalle por categoría
             detalle_categorias = []
             for marca in df['Marca'].unique():
                 df_marca = df[df['Marca'] == marca]
@@ -394,16 +419,79 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
             df_detalle = pd.DataFrame(detalle_categorias)
             df_detalle.to_excel(writer, sheet_name='Detalle por Categoría', index=False)
             
-            # Hoja 5: Todas las fichas con estado
+            # Hoja 5: Todas las fichas
             df_con_estado = df.copy()
             df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
             df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_excel(writer, sheet_name='Todas las Fichas', index=False)
+    except ImportError:
+        # Si no hay openpyxl, usar ZIP con CSV
+        st.warning("⚠️ Generando archivo ZIP con CSVs...")
+        return exportar_csv_zip_progreso(df, series_encontradas, series_no_encontradas)
     except Exception as e:
         st.error(f"Error al exportar Excel: {e}")
         return None
     
     output.seek(0)
     return output
+
+def exportar_csv_zip_progreso(df, series_encontradas, series_no_encontradas):
+    """Exporta a ZIP con CSVs cuando openpyxl no está disponible"""
+    output = BytesIO()
+    
+    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Series encontradas
+        if series_encontradas:
+            df_encontradas = pd.DataFrame(series_encontradas)
+            zipf.writestr('series_encontradas.csv', df_encontradas.to_csv(index=False, encoding='utf-8-sig'))
+        
+        # Series no encontradas
+        if series_no_encontradas:
+            df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
+            zipf.writestr('series_no_encontradas.csv', df_no_encontradas.to_csv(index=False, encoding='utf-8-sig'))
+        
+        # Resumen por marca
+        resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
+        resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
+            lambda x: sum(1 for _, row in df[df['Marca'] == x].iterrows() if st.session_state.progreso.get(row['ID'], False))
+        )
+        resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
+        resumen_marcas['Porcentaje'] = (resumen_marcas['Completadas'] / resumen_marcas['Total Fichas'] * 100).round(1)
+        zipf.writestr('resumen_por_marca.csv', resumen_marcas.to_csv(index=False, encoding='utf-8-sig'))
+        
+        # Detalle por categoría
+        detalle_categorias = []
+        for marca in df['Marca'].unique():
+            df_marca = df[df['Marca'] == marca]
+            for categoria in df_marca['Categoría'].unique():
+                df_cat = df_marca[df_marca['Categoría'] == categoria]
+                total = len(df_cat)
+                completadas = sum(1 for _, row in df_cat.iterrows() if st.session_state.progreso.get(row['ID'], False))
+                detalle_categorias.append({
+                    'Marca': marca,
+                    'Categoría': categoria,
+                    'Total Fichas': total,
+                    'Completadas': completadas,
+                    'Pendientes': total - completadas,
+                    'Porcentaje': (completadas / total * 100) if total > 0 else 0
+                })
+        
+        df_detalle = pd.DataFrame(detalle_categorias)
+        zipf.writestr('detalle_por_categoria.csv', df_detalle.to_csv(index=False, encoding='utf-8-sig'))
+        
+        # Todas las fichas
+        df_con_estado = df.copy()
+        df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
+        zipf.writestr('todas_las_fichas.csv', df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_csv(index=False, encoding='utf-8-sig'))
+    
+    output.seek(0)
+    return output
+
+def limpiar_progreso_por_marca(marca, df):
+    """Limpia el progreso de todas las fichas de una marca específica"""
+    fichas_marca = df[df['Marca'] == marca]['ID'].tolist()
+    for ficha_id in fichas_marca:
+        st.session_state.progreso.pop(ficha_id, None)
+    guardar_progreso(st.session_state.progreso)
 
 # Inicializar estado de sesión
 if 'progreso' not in st.session_state:
@@ -448,6 +536,29 @@ with st.sidebar:
             if importar_progreso(archivo_progreso):
                 st.success("✅ Progreso importado!")
                 st.session_state.progreso = cargar_progreso()
+                st.rerun()
+    
+    st.markdown("---")
+    st.markdown("### 🗑️ Limpiar Progreso")
+    
+    if st.session_state.df_actual is not None:
+        marcas_disponibles = [''] + sorted(st.session_state.df_actual['Marca'].unique().tolist())
+        marca_limpiar = st.selectbox("Selecciona marca para limpiar", marcas_disponibles)
+        
+        col3, col4 = st.columns(2)
+        with col3:
+            if marca_limpiar and st.button(f"🗑️ Limpiar {marca_limpiar}"):
+                limpiar_progreso_por_marca(marca_limpiar, st.session_state.df_actual)
+                st.success(f"✅ Progreso de {marca_limpiar} limpiado!")
+                st.rerun()
+        
+        with col4:
+            if st.button("⚠️ RESET TOTAL", type="primary"):
+                st.session_state.progreso = {}
+                st.session_state.series_procesadas = set()
+                guardar_progreso({})
+                guardar_series_procesadas(set())
+                st.success("✅ PROGRESO TOTAL RESETEADO!")
                 st.rerun()
     
     st.markdown("---")
@@ -632,6 +743,13 @@ if archivo is not None:
                     completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
                     porcentaje = (completadas_marca / len(df_marca)) * 100 if len(df_marca) > 0 else 0
                     st.metric("✅ Completado", f"{porcentaje:.1f}%")
+                
+                estados_marca = df_marca['Estado'].value_counts().reset_index()
+                estados_marca.columns = ['Estado', 'Cantidad']
+                fig_marca_estados = px.bar(estados_marca, x='Estado', y='Cantidad',
+                                           title=f'📌 Estados - {marca_analisis}', text='Cantidad')
+                fig_marca_estados.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_marca_estados, use_container_width=True)
         
         with tab3:
             categoria_analisis = st.selectbox("Selecciona una categoría", sorted(df['Categoría'].unique()))
@@ -685,14 +803,15 @@ if archivo is not None:
         with tab5:
             st.markdown("### 📦 Carga Masiva de Números de Serie")
             st.markdown("Pega una lista de números de serie (uno por línea) para buscar coincidencias exactas en las descripciones de los productos.")
-            st.info("💡 **Características:**\n- ✅ Detecta series duplicadas automáticamente\n- ✅ Acumula series nuevas sin perder el progreso anterior\n- ✅ Busca coincidencia EXACTA en la descripción del producto")
+            st.info("💡 **Características:**\n- ✅ Detecta series duplicadas automáticamente\n- ✅ Acumula series nuevas sin perder el progreso anterior\n- ✅ Cada serie se asigna a UNA SOLA ficha\n- ✅ Busca coincidencia EXACTA en la descripción del producto")
             
             # Mostrar series ya procesadas
             with st.expander(f"📊 Ver series ya procesadas ({len(st.session_state.series_procesadas)} únicas)"):
                 if st.session_state.series_procesadas:
-                    st.write(list(st.session_state.series_procesadas)[:100])
-                    if len(st.session_state.series_procesadas) > 100:
-                        st.caption(f"... y {len(st.session_state.series_procesadas) - 100} más")
+                    series_list = list(st.session_state.series_procesadas)
+                    st.write(series_list[:100])
+                    if len(series_list) > 100:
+                        st.caption(f"... y {len(series_list) - 100} más")
                 else:
                     st.info("Aún no has procesado ninguna serie")
             
@@ -735,6 +854,12 @@ if archivo is not None:
                             if encontradas:
                                 st.markdown("#### ✅ Series encontradas y marcadas:")
                                 st.dataframe(pd.DataFrame(encontradas), use_container_width=True)
+                                
+                                # Resumen por marca
+                                st.markdown("#### 📊 Resumen por Marca de las series encontradas:")
+                                df_resumen = pd.DataFrame(encontradas)
+                                resumen_marcas_series = df_resumen.groupby('Marca').size().reset_index(name='Series Encontradas')
+                                st.dataframe(resumen_marcas_series, use_container_width=True)
                             
                             if no_encontradas:
                                 st.markdown("#### ❌ Series NO encontradas:")
@@ -750,8 +875,8 @@ if archivo is not None:
                         st.warning("⚠️ Por favor ingresa al menos un número de serie")
             
             with col2:
-                # Botón para exportar Excel
-                if st.button("📊 Exportar a Excel (Progreso Actual)"):
+                # Botón para exportar Excel/CSV
+                if st.button("📊 Exportar a Excel/CSV (Progreso Actual)"):
                     excel_file = exportar_excel_progreso(
                         df, 
                         st.session_state.ultimas_encontradas, 
@@ -759,11 +884,13 @@ if archivo is not None:
                     )
                     
                     if excel_file:
+                        # Determinar si es Excel o ZIP
+                        file_ext = "xlsx" if "openpyxl" in str(type(excel_file)) or excel_file.getvalue()[:4] == b'PK\x03\x04' else "xlsx"
                         st.download_button(
-                            label="📥 Descargar Excel",
+                            label="📥 Descargar reporte",
                             data=excel_file,
-                            file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{'xlsx' if 'openpyxl' in str(type(excel_file)) else 'zip'}",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if 'openpyxl' in str(type(excel_file)) else "application/zip"
                         )
         
         with tab6:
