@@ -1,14 +1,23 @@
-streamlit==1.35.0
-pandas==2.2.3
-plotly==5.24.1
-openpyxl==3.1.5
-numpy==1.26.4
-python-dateutil==2.9.0
-pytz==2024.1
-six==1.16.0
-tzdata==2024.1
-pillow==10.4.0
-packaging==24.1
-werkzeug==3.0.6
-click==8.1.7
-blinker==1.8.2
+# Core dependencies - Compatible con Python 3.13
+streamlit
+pandas
+plotly
+openpyxl
+
+# Dependencias necesarias para pandas y streamlit
+numpy
+python-dateutil
+pytz
+six
+tzdata
+
+# Para manejo de imágenes (si las usas)
+pillow
+
+# Para operaciones numéricas adicionales
+packaging
+werkzeug
+click
+blinker
+
+
