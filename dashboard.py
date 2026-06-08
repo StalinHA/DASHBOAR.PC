@@ -33,162 +33,160 @@ MARCAS_COMPLETAS = [
 # Archivo para guardar el progreso
 PROGRESS_FILE = "progreso_marcas.json"
 
-# CSS personalizado - Fondo elegante blanco/gris oscuro
+# CSS personalizado - Mejor contraste y legibilidad
 st.markdown("""
 <style>
-    /* Fondo principal oscuro elegante */
+    /* Fondo principal */
     .stApp {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%);
     }
     
-    /* Header elegante */
+    /* Header */
     .main-header {
-        background: linear-gradient(90deg, #1e3c72, #2a5298);
+        background: linear-gradient(90deg, #1a365d, #2c5282);
         padding: 2rem;
         border-radius: 20px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
     
     .main-header h1 {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
-        font-weight: 600;
+        font-weight: 700;
     }
     
     .main-header p {
         font-size: 1.1rem;
-        opacity: 0.9;
+        opacity: 0.95;
     }
     
     /* Tarjetas de estadísticas */
     .stat-card {
-        background: rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
+        background: white;
         padding: 1.5rem;
         border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
         text-align: center;
         transition: transform 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid #e2e8f0;
     }
     
     .stat-card:hover {
         transform: translateY(-5px);
-        background: rgba(255,255,255,0.15);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
     }
     
     .stat-number {
         font-size: 2.5rem;
         font-weight: bold;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        background: linear-gradient(135deg, #2c5282, #1a365d);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
     
     .stat-label {
-        color: #ccc;
+        color: #4a5568;
         margin-top: 0.5rem;
         font-size: 0.9rem;
+        font-weight: 500;
     }
     
-    /* Tarjetas de progreso */
-    .completed-card {
-        background: linear-gradient(135deg, #10b981, #059669);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-    }
-    
-    .pending-card {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-    }
-    
-    /* Personalizar texto en elementos de Streamlit */
-    .stMarkdown, .stText, .stMetric {
-        color: #e0e0e0;
-    }
-    
-    /* Sidebar oscuro */
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e293b, #0f172a);
-        border-right: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(180deg, #2d3748, #1a202c);
+        border-right: 1px solid #4a5568;
     }
     
     [data-testid="stSidebar"] .stMarkdown {
-        color: #e0e0e0;
+        color: #e2e8f0;
     }
     
-    /* Tabs personalizados */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #f7fafc;
+    }
+    
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: rgba(255,255,255,0.05);
-        border-radius: 10px;
-        padding: 5px;
+        background-color: #edf2f7;
+        border-radius: 12px;
+        padding: 6px;
     }
     
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
         padding: 8px 20px;
-        color: #e0e0e0;
-        font-weight: 500;
+        color: #2d3748;
+        font-weight: 600;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: linear-gradient(90deg, #2c5282, #1a365d);
         color: white;
+    }
+    
+    /* Texto general */
+    .stMarkdown, .stText, .stMetric label {
+        color: #2d3748;
     }
     
     /* Dataframe */
     .stDataFrame {
-        background: rgba(255,255,255,0.05);
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.1);
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
     }
     
     /* Inputs */
-    .stSelectbox, .stTextInput, .stNumberInput {
-        background-color: rgba(255,255,255,0.05);
+    .stSelectbox, .stTextInput, .stNumberInput, .stTextArea {
+        background-color: white;
         border-radius: 8px;
     }
     
     /* Botones */
     .stButton button {
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: linear-gradient(90deg, #2c5282, #1a365d);
         color: white;
         border: none;
         border-radius: 8px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
         transition: all 0.3s;
     }
     
     .stButton button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+        box-shadow: 0 5px 20px rgba(44,82,130,0.3);
+    }
+    
+    /* Info/Success/Warning boxes */
+    .stAlert {
+        background-color: #edf2f7;
+        border-left: 4px solid #2c5282;
+        color: #2d3748;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background-color: rgba(255,255,255,0.05);
+        background-color: #edf2f7;
         border-radius: 8px;
-        color: #e0e0e0;
+        color: #2d3748;
+        font-weight: 600;
     }
     
-    /* Info, Success, Warning boxes */
-    .stAlert {
-        background-color: rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.2);
+    /* Badges para marcas sin fichas */
+    .no-data-badge {
+        background-color: #e53e3e;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -289,6 +287,67 @@ def importar_progreso(archivo_json):
     except:
         return False
 
+def buscar_y_marcar_series(series_list, df):
+    """Busca cada serie en la descripción del producto y la marca como completada"""
+    encontradas = []
+    no_encontradas = []
+    
+    for serie in series_list:
+        serie_limpia = serie.strip()
+        if not serie_limpia:
+            continue
+            
+        # Buscar coincidencia exacta en el producto
+        encontrada = False
+        for _, row in df.iterrows():
+            if serie_limpia in row['Producto']:
+                encontrada = True
+                # Marcar como completada
+                st.session_state.progreso[row['ID']] = True
+                encontradas.append({
+                    'Serie': serie_limpia,
+                    'Producto': row['Producto'][:200],
+                    'Marca': row['Marca'],
+                    'Categoría': row['Categoría']
+                })
+                break
+        
+        if not encontrada:
+            no_encontradas.append(serie_limpia)
+    
+    guardar_progreso(st.session_state.progreso)
+    return encontradas, no_encontradas
+
+def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
+    """Exporta a Excel el progreso con series encontradas y no encontradas"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Hoja 1: Series encontradas (completadas)
+        if series_encontradas:
+            df_encontradas = pd.DataFrame(series_encontradas)
+            df_encontradas.to_excel(writer, sheet_name='Series Encontradas', index=False)
+        
+        # Hoja 2: Series no encontradas (pendientes)
+        if series_no_encontradas:
+            df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
+            df_no_encontradas.to_excel(writer, sheet_name='Series No Encontradas', index=False)
+        
+        # Hoja 3: Resumen de fichas por marca
+        resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
+        resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
+            lambda x: sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df[df['Marca'] == x].iterrows())
+        )
+        resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
+        resumen_marcas.to_excel(writer, sheet_name='Resumen por Marca', index=False)
+        
+        # Hoja 4: Todas las fichas con estado
+        df_con_estado = df.copy()
+        df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
+        df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_excel(writer, sheet_name='Todas las Fichas', index=False)
+    
+    output.seek(0)
+    return output
+
 # Inicializar estado de sesión
 if 'progreso' not in st.session_state:
     st.session_state.progreso = cargar_progreso()
@@ -347,10 +406,11 @@ if archivo is not None:
         with col1:
             st.metric("📦 Total Fichas", f"{len(df):,}")
         with col2:
-            marcas_detectadas = df[df['Marca'] != 'SIN MARCA']['Marca'].nunique()
-            st.metric("🏭 Marcas Detectadas", marcas_detectadas)
+            marcas_con_fichas = df['Marca'].nunique()
+            st.metric("🏭 Marcas con Fichas", marcas_con_fichas)
         with col3:
-            st.metric("📁 Categorías", df['Categoría'].nunique())
+            marcas_sin_fichas = len([m for m in MARCAS_COMPLETAS if m not in df['Marca'].values])
+            st.metric("⚠️ Marcas sin Fichas", marcas_sin_fichas)
         with col4:
             propuestas = len(df[df['Estado'] == 'PROPUESTA'])
             st.metric("📌 En PROPUESTA", f"{propuestas:,}")
@@ -402,74 +462,60 @@ if archivo is not None:
         
         st.info(f"📊 Mostrando **{len(df_filtrado):,}** de **{len(df):,}** fichas")
         
-        # Panel de progreso por marca y categoría
+        # Panel de marcas sin fichas
         st.markdown("---")
-        st.markdown("### 📈 Panel de Progreso")
+        st.markdown("### ⚠️ Marcas Sin Fichas en el Sistema")
         
-        col1, col2 = st.columns(2)
+        marcas_con_datos = set(df['Marca'].unique())
+        marcas_sin_datos = [m for m in MARCAS_COMPLETAS if m not in marcas_con_datos]
         
-        with col1:
-            st.markdown("#### 🏭 Progreso por Marca")
-            progreso_marcas = []
-            for marca in df['Marca'].unique():
-                df_marca = df[df['Marca'] == marca]
-                total_marca = len(df_marca)
-                completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
-                porcentaje_marca = (completadas_marca / total_marca) * 100 if total_marca > 0 else 0
-                progreso_marcas.append({
-                    'Marca': marca,
-                    'Total': total_marca,
-                    'Completadas': completadas_marca,
-                    'Porcentaje': porcentaje_marca
-                })
-            
-            df_progreso_marcas = pd.DataFrame(progreso_marcas).sort_values('Porcentaje', ascending=False)
-            
-            fig_progreso = px.bar(df_progreso_marcas.head(10), 
-                                  x='Porcentaje', y='Marca', orientation='h',
-                                  title='Top 10 Marcas por % Completado',
-                                  text='Porcentaje',
-                                  color='Porcentaje',
-                                  color_continuous_scale='RdYlGn',
-                                  range_color=[0, 100])
-            fig_progreso.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-            fig_progreso.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_progreso, use_container_width=True)
+        if marcas_sin_datos:
+            cols = st.columns(5)
+            for i, marca in enumerate(marcas_sin_datos[:20]):
+                with cols[i % 5]:
+                    st.markdown(f"<span class='no-data-badge'>⚠️ {marca}</span>", unsafe_allow_html=True)
+            if len(marcas_sin_datos) > 20:
+                st.caption(f"... y {len(marcas_sin_datos) - 20} marcas más sin fichas")
+        else:
+            st.success("✅ ¡Todas las marcas tienen fichas cargadas!")
         
-        with col2:
-            st.markdown("#### 📂 Progreso por Categoría")
-            progreso_categorias = []
-            for categoria in df['Categoría'].unique():
-                df_cat = df[df['Categoría'] == categoria]
-                total_cat = len(df_cat)
-                completadas_cat = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_cat.iterrows())
-                porcentaje_cat = (completadas_cat / total_cat) * 100 if total_cat > 0 else 0
-                progreso_categorias.append({
-                    'Categoría': categoria[:30],
-                    'Total': total_cat,
-                    'Completadas': completadas_cat,
-                    'Porcentaje': porcentaje_cat
-                })
-            
-            df_progreso_categorias = pd.DataFrame(progreso_categorias).sort_values('Porcentaje', ascending=False)
-            
-            fig_progreso_cat = px.bar(df_progreso_categorias.head(10), 
-                                      x='Porcentaje', y='Categoría', orientation='h',
-                                      title='Top 10 Categorías por % Completado',
-                                      text='Porcentaje',
-                                      color='Porcentaje',
-                                      color_continuous_scale='RdYlGn',
-                                      range_color=[0, 100])
-            fig_progreso_cat.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-            fig_progreso_cat.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_progreso_cat, use_container_width=True)
+        # Panel de progreso por marca
+        st.markdown("---")
+        st.markdown("### 📈 Panel de Progreso por Marca")
+        
+        progreso_marcas = []
+        for marca in df['Marca'].unique():
+            df_marca = df[df['Marca'] == marca]
+            total_marca = len(df_marca)
+            completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
+            porcentaje_marca = (completadas_marca / total_marca) * 100 if total_marca > 0 else 0
+            progreso_marcas.append({
+                'Marca': marca,
+                'Total': total_marca,
+                'Completadas': completadas_marca,
+                'Porcentaje': porcentaje_marca
+            })
+        
+        df_progreso_marcas = pd.DataFrame(progreso_marcas).sort_values('Porcentaje', ascending=False)
+        
+        fig_progreso = px.bar(df_progreso_marcas.head(15), 
+                              x='Porcentaje', y='Marca', orientation='h',
+                              title='Progreso por Marca (% Completado)',
+                              text='Porcentaje',
+                              color='Porcentaje',
+                              color_continuous_scale='RdYlGn',
+                              range_color=[0, 100])
+        fig_progreso.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig_progreso.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_progreso, use_container_width=True)
         
         # Tabs
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📈 Resumen General", 
             "🏭 Análisis por Marca", 
             "📂 Análisis por Categoría",
             "🔍 Análisis Marca-Categoría",
+            "📦 Carga Masiva de Series",
             "✅ Revisión de Fichas",
             "📋 Tabla Detallada"
         ])
@@ -492,14 +538,6 @@ if archivo is not None:
                                     title='🏭 Top 10 Marcas', text='Cantidad')
                 fig_marcas.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_marcas, use_container_width=True)
-            
-            top_categorias = df_filtrado['Categoría'].value_counts().head(10).reset_index()
-            top_categorias.columns = ['Categoría', 'Cantidad']
-            fig_cat = px.bar(top_categorias, x='Categoría', y='Cantidad',
-                             title='📁 Top 10 Categorías', text='Cantidad')
-            fig_cat.update_xaxes(tickangle=45)
-            fig_cat.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_cat, use_container_width=True)
         
         with tab2:
             marca_analisis = st.selectbox("Selecciona una marca", sorted(df['Marca'].unique()))
@@ -519,13 +557,6 @@ if archivo is not None:
                     completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
                     porcentaje = (completadas_marca / len(df_marca)) * 100 if len(df_marca) > 0 else 0
                     st.metric("✅ Completado", f"{porcentaje:.1f}%")
-                
-                estados_marca = df_marca['Estado'].value_counts().reset_index()
-                estados_marca.columns = ['Estado', 'Cantidad']
-                fig_marca_estados = px.bar(estados_marca, x='Estado', y='Cantidad',
-                                           title=f'📌 Estados - {marca_analisis}', text='Cantidad')
-                fig_marca_estados.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_marca_estados, use_container_width=True)
         
         with tab3:
             categoria_analisis = st.selectbox("Selecciona una categoría", sorted(df['Categoría'].unique()))
@@ -542,25 +573,15 @@ if archivo is not None:
                     completadas_cat = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_categoria.iterrows())
                     porcentaje = (completadas_cat / len(df_categoria)) * 100 if len(df_categoria) > 0 else 0
                     st.metric("✅ Completado", f"{porcentaje:.1f}%")
-                
-                marcas_categoria = df_categoria['Marca'].value_counts().reset_index()
-                marcas_categoria.columns = ['Marca', 'Cantidad']
-                fig_cat_marcas = px.bar(marcas_categoria, x='Cantidad', y='Marca', orientation='h',
-                                        title=f'🏭 Marcas en {categoria_analisis}', text='Cantidad')
-                fig_cat_marcas.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_cat_marcas, use_container_width=True)
         
-        # NUEVA PESTAÑA: Análisis Marca-Categoría
         with tab4:
             st.markdown("### 🔍 Análisis Detallado: Marca vs Categoría")
-            st.markdown("Selecciona una marca para ver en qué categorías está presente y el desglose por estado")
             
             marca_seleccionada = st.selectbox("🏭 Selecciona una marca", sorted(df['Marca'].unique()), key="marca_categoria_analysis")
             
             if marca_seleccionada:
                 df_marca = df[df['Marca'] == marca_seleccionada]
                 
-                # Mostrar resumen de la marca
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("📦 Total Fichas", len(df_marca))
@@ -572,65 +593,74 @@ if archivo is not None:
                 st.markdown("---")
                 st.markdown("#### 📂 Categorías donde aparece la marca")
                 
-                # Análisis por categoría
-                categorias_marca = df_marca['Categoría'].value_counts().reset_index()
-                categorias_marca.columns = ['Categoría', 'Total Fichas']
-                
-                # Para cada categoría, desglosar por estado
-                st.markdown("##### Desglose por categoría y estado")
-                
                 for categoria in df_marca['Categoría'].unique():
                     df_categoria_marca = df_marca[df_marca['Categoría'] == categoria]
                     
                     with st.expander(f"📁 {categoria} - Total: {len(df_categoria_marca)} fichas"):
-                        # Desglose por estado
                         estados_cat = df_categoria_marca['Estado'].value_counts().reset_index()
                         estados_cat.columns = ['Estado', 'Cantidad']
                         
-                        col1, col2 = st.columns([2, 1])
-                        
-                        with col1:
-                            fig_estados_cat = px.bar(estados_cat, x='Estado', y='Cantidad',
-                                                      title=f'Distribución por Estado en {categoria}',
-                                                      text='Cantidad', color='Estado')
-                            fig_estados_cat.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                            st.plotly_chart(fig_estados_cat, use_container_width=True)
-                        
-                        with col2:
-                            # Mostrar tabla simple
-                            st.dataframe(estados_cat, use_container_width=True)
-                        
-                        # Mostrar algunas fichas de ejemplo
-                        with st.expander(f"Ver fichas de {categoria}"):
-                            st.dataframe(df_categoria_marca[['Producto', 'Estado', 'Número de Parte']].head(10), use_container_width=True)
-                
-                # Gráfico general: Categorías vs Estados (mapa de calor)
-                st.markdown("---")
-                st.markdown("#### 🗺️ Mapa de calor: Categorías vs Estados")
-                
-                # Crear tabla pivote
-                pivot_table = pd.crosstab(df_marca['Categoría'], df_marca['Estado'], values=df_marca.index, aggfunc='count').fillna(0)
-                
-                fig_heatmap = px.imshow(pivot_table, 
-                                        text_auto=True, 
-                                        aspect="auto",
-                                        title=f"Distribución de fichas por Categoría y Estado - {marca_seleccionada}",
-                                        color_continuous_scale='Viridis')
-                fig_heatmap.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_heatmap, use_container_width=True)
-                
-                # Resumen de estados
-                st.markdown("---")
-                st.markdown("#### 📊 Resumen de Estados")
-                total_estados = df_marca['Estado'].value_counts().reset_index()
-                total_estados.columns = ['Estado', 'Cantidad']
-                fig_total_estados = px.pie(total_estados, values='Cantidad', names='Estado',
-                                           title=f'Distribución General de Estados - {marca_seleccionada}',
-                                           hole=0.3)
-                fig_total_estados.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_total_estados, use_container_width=True)
+                        fig_estados_cat = px.bar(estados_cat, x='Estado', y='Cantidad',
+                                                  title=f'Distribución por Estado en {categoria}',
+                                                  text='Cantidad', color='Estado')
+                        fig_estados_cat.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_estados_cat, use_container_width=True)
         
+        # NUEVA PESTAÑA: Carga Masiva de Series
         with tab5:
+            st.markdown("### 📦 Carga Masiva de Números de Serie")
+            st.markdown("Pega una lista de números de serie (uno por línea) para buscar coincidencias exactas en las descripciones de los productos.")
+            st.info("💡 **Formato aceptado:**\n- Un número de serie por línea\n- Hasta 10,000 series\n- Busca coincidencia EXACTA en la descripción del producto")
+            
+            series_input = st.text_area(
+                "📝 Ingresa los números de serie (uno por línea):",
+                height=200,
+                placeholder="Ejemplo:\nM70SG51016201\nM70SG51016201SI\nM70SG51016211\nN50S67161F*\nNEO55SR716100"
+            )
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🔍 Buscar y Marcar Series", type="primary"):
+                    if series_input.strip():
+                        series_list = [s.strip() for s in series_input.strip().split('\n') if s.strip()]
+                        
+                        with st.spinner(f'Buscando {len(series_list)} series...'):
+                            encontradas, no_encontradas = buscar_y_marcar_series(series_list, df)
+                            
+                            st.success(f"✅ Búsqueda completada!")
+                            st.metric("Series encontradas", len(encontradas))
+                            st.metric("Series NO encontradas", len(no_encontradas))
+                            
+                            if encontradas:
+                                st.markdown("#### ✅ Series encontradas:")
+                                st.dataframe(pd.DataFrame(encontradas), use_container_width=True)
+                            
+                            if no_encontradas:
+                                st.markdown("#### ❌ Series NO encontradas:")
+                                st.write(no_encontradas[:50])
+                                if len(no_encontradas) > 50:
+                                    st.caption(f"... y {len(no_encontradas) - 50} más")
+                    else:
+                        st.warning("⚠️ Por favor ingresa al menos un número de serie")
+            
+            with col2:
+                # Botón para exportar Excel con el progreso actual
+                if st.button("📊 Exportar a Excel (Progreso Actual)"):
+                    series_encontradas = []
+                    series_no_encontradas = []
+                    
+                    # Generar Excel con el progreso actual
+                    excel_file = exportar_excel_progreso(df, series_encontradas, series_no_encontradas)
+                    
+                    st.download_button(
+                        label="📥 Descargar Excel",
+                        data=excel_file,
+                        file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+        
+        with tab6:
             st.markdown("### ✅ Revisión de Fichas")
             st.markdown("Marca las fichas que ya has revisado/completado. ¡El progreso se guarda automáticamente!")
             
@@ -654,47 +684,42 @@ if archivo is not None:
             
             st.markdown("#### Marca las fichas revisadas:")
             
-            # Crear contenedor para los checkboxes
-            checkbox_container = st.container()
+            for idx, (_, row) in enumerate(df_revision.iloc[start_idx_review:end_idx_review].iterrows()):
+                col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 3, 1])
+                ficha_id = row['ID']
+                is_checked = st.session_state.progreso.get(ficha_id, False)
+                
+                with col1:
+                    nuevo_estado = st.checkbox("✅", value=is_checked, key=f"check_{ficha_id}_{idx}")
+                    if nuevo_estado != is_checked:
+                        if nuevo_estado:
+                            st.session_state.progreso[ficha_id] = True
+                        else:
+                            st.session_state.progreso.pop(ficha_id, None)
+                        guardar_progreso(st.session_state.progreso)
+                        st.rerun()
+                
+                with col2:
+                    st.markdown(f"**{row['Marca']}**")
+                with col3:
+                    st.markdown(row['Categoría'])
+                with col4:
+                    st.markdown(row['Producto'][:80] + "...")
+                with col5:
+                    if row['Número de Parte'] != 'N/D':
+                        st.markdown(f"Parte: {row['Número de Parte']}")
             
-            with checkbox_container:
-                for idx, (_, row) in enumerate(df_revision.iloc[start_idx_review:end_idx_review].iterrows()):
-                    col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1])
-                    ficha_id = row['ID']
-                    is_checked = st.session_state.progreso.get(ficha_id, False)
-                    
-                    with col1:
-                        nuevo_estado = st.checkbox("✅", value=is_checked, key=f"check_{ficha_id}_{idx}")
-                        if nuevo_estado != is_checked:
-                            if nuevo_estado:
-                                st.session_state.progreso[ficha_id] = True
-                            else:
-                                st.session_state.progreso.pop(ficha_id, None)
-                            guardar_progreso(st.session_state.progreso)
-                            st.rerun()
-                    
-                    with col2:
-                        st.markdown(f"**Marca:** {row['Marca']}")
-                    with col3:
-                        st.markdown(f"**Categoría:** {row['Categoría']}")
-                    with col4:
-                        st.markdown(f"**Producto:** {row['Producto'][:80]}...")
-                    with col5:
-                        if row['Número de Parte'] != 'N/D':
-                            st.markdown(f"**Parte:** {row['Número de Parte']}")
-            
-            st.markdown("---")
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("✅ Marcar todas las fichas filtradas como completadas", key="marcar_todas"):
+                if st.button("✅ Marcar todas las fichas filtradas"):
                     for _, row in df_revision.iterrows():
                         st.session_state.progreso[row['ID']] = True
                     guardar_progreso(st.session_state.progreso)
                     st.rerun()
             
             with col2:
-                if st.button("🔄 Resetear todas las fichas filtradas", key="resetear_todas"):
+                if st.button("🔄 Resetear todas las fichas filtradas"):
                     for _, row in df_revision.iterrows():
                         st.session_state.progreso.pop(row['ID'], None)
                     guardar_progreso(st.session_state.progreso)
@@ -703,9 +728,9 @@ if archivo is not None:
             with col3:
                 total_revision = len(df_revision)
                 completadas_revision = sum(st.session_state.progreso.get(row['ID'], False) for _, row in df_revision.iterrows())
-                st.metric("Progreso en este filtro", f"{completadas_revision}/{total_revision}")
+                st.metric("Progreso", f"{completadas_revision}/{total_revision}")
         
-        with tab6:
+        with tab7:
             st.markdown("### 📋 Listado Detallado")
             
             rows_per_page = st.selectbox("Filas por página", [10, 25, 50, 100], index=2, key="detail_rows")
