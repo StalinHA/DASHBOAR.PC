@@ -36,83 +36,94 @@ PROGRESS_FILE = "progreso_marcas.json"
 # CSS personalizado - Mejor contraste y legibilidad
 st.markdown("""
 <style>
-    /* Fondo principal */
+    /* Fondo principal - Azul noche */
     .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e9edf2 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
     }
     
-    /* Header */
+    /* Header - Gradiente azul brillante */
     .main-header {
-        background: linear-gradient(90deg, #1a365d, #2c5282);
+        background: linear-gradient(90deg, #2563eb, #1e40af);
         padding: 2rem;
         border-radius: 20px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
     }
     
     .main-header h1 {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
         font-weight: 700;
+        color: white;
     }
     
     .main-header p {
         font-size: 1.1rem;
         opacity: 0.95;
+        color: #e2e8f0;
     }
     
-    /* Tarjetas de estadísticas */
+    /* Tarjetas de estadísticas - Fondo semitransparente */
     .stat-card {
-        background: white;
+        background: rgba(30, 41, 59, 0.8);
+        backdrop-filter: blur(10px);
         padding: 1.5rem;
         border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
         text-align: center;
         transition: transform 0.3s;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(255,255,255,0.1);
     }
     
     .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        background: rgba(30, 41, 59, 0.9);
     }
     
     .stat-number {
         font-size: 2.5rem;
         font-weight: bold;
-        background: linear-gradient(135deg, #2c5282, #1a365d);
+        background: linear-gradient(135deg, #60a5fa, #3b82f6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
     
     .stat-label {
-        color: #4a5568;
+        color: #cbd5e1;
         margin-top: 0.5rem;
         font-size: 0.9rem;
         font-weight: 500;
     }
     
-    /* Sidebar */
+    /* Sidebar - Oscuro sólido */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #2d3748, #1a202c);
-        border-right: 1px solid #4a5568;
+        background: linear-gradient(180deg, #0f172a, #020617);
+        border-right: 1px solid #334155;
     }
     
     [data-testid="stSidebar"] .stMarkdown {
         color: #e2e8f0;
     }
     
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #f7fafc;
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
+        color: #f1f5f9;
+    }
+    
+    [data-testid="stSidebar"] .stSelectbox label,
+    [data-testid="stSidebar"] .stTextInput label {
+        color: #cbd5e1;
     }
     
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #edf2f7;
+        background-color: #1e293b;
         border-radius: 12px;
         padding: 6px;
     }
@@ -120,36 +131,45 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
         padding: 8px 20px;
-        color: #2d3748;
+        color: #cbd5e1;
         font-weight: 600;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #2c5282, #1a365d);
+        background: linear-gradient(90deg, #3b82f6, #2563eb);
         color: white;
     }
     
     /* Texto general */
     .stMarkdown, .stText, .stMetric label {
-        color: #2d3748;
+        color: #f1f5f9;
+    }
+    
+    .stMarkdown p, .stText p {
+        color: #e2e8f0;
     }
     
     /* Dataframe */
     .stDataFrame {
-        background: white;
+        background: #1e293b;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #334155;
     }
     
     /* Inputs */
     .stSelectbox, .stTextInput, .stNumberInput, .stTextArea {
-        background-color: white;
+        background-color: #1e293b;
         border-radius: 8px;
+        color: #f1f5f9;
+    }
+    
+    .stSelectbox label, .stTextInput label {
+        color: #cbd5e1;
     }
     
     /* Botones */
     .stButton button {
-        background: linear-gradient(90deg, #2c5282, #1a365d);
+        background: linear-gradient(90deg, #3b82f6, #2563eb);
         color: white;
         border: none;
         border-radius: 8px;
@@ -160,33 +180,47 @@ st.markdown("""
     
     .stButton button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(44,82,130,0.3);
+        box-shadow: 0 5px 20px rgba(59,130,246,0.4);
     }
     
     /* Info/Success/Warning boxes */
     .stAlert {
-        background-color: #edf2f7;
-        border-left: 4px solid #2c5282;
-        color: #2d3748;
+        background-color: #1e293b;
+        border-left: 4px solid #3b82f6;
+        color: #e2e8f0;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background-color: #edf2f7;
+        background-color: #1e293b;
         border-radius: 8px;
-        color: #2d3748;
+        color: #f1f5f9;
         font-weight: 600;
     }
     
     /* Badges para marcas sin fichas */
     .no-data-badge {
-        background-color: #e53e3e;
+        background-color: #ef4444;
         color: white;
         padding: 2px 8px;
         border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 600;
         display: inline-block;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        color: #60a5fa;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #cbd5e1;
+    }
+    
+    /* Checkboxes */
+    .stCheckbox label {
+        color: #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
