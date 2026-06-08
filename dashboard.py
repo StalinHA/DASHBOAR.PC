@@ -32,8 +32,9 @@ MARCAS_COMPLETAS = [
 
 # Archivo para guardar el progreso
 PROGRESS_FILE = "progreso_marcas.json"
+SERIES_PROCESSED_FILE = "series_procesadas.json"
 
-# CSS personalizado - Mejor contraste y legibilidad
+# CSS personalizado - Fondo oscuro elegante con buen contraste
 st.markdown("""
 <style>
     /* Fondo principal - Azul noche */
@@ -66,7 +67,7 @@ st.markdown("""
         color: #e2e8f0;
     }
     
-    /* Tarjetas de estadísticas - Fondo semitransparente */
+    /* Tarjetas de estadísticas */
     .stat-card {
         background: rgba(30, 41, 59, 0.8);
         backdrop-filter: blur(10px);
@@ -99,7 +100,7 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Sidebar - Oscuro sólido */
+    /* Sidebar */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f172a, #020617);
         border-right: 1px solid #334155;
@@ -113,11 +114,6 @@ st.markdown("""
     [data-testid="stSidebar"] h2, 
     [data-testid="stSidebar"] h3 {
         color: #f1f5f9;
-    }
-    
-    [data-testid="stSidebar"] .stSelectbox label,
-    [data-testid="stSidebar"] .stTextInput label {
-        color: #cbd5e1;
     }
     
     /* Tabs */
@@ -145,28 +141,6 @@ st.markdown("""
         color: #f1f5f9;
     }
     
-    .stMarkdown p, .stText p {
-        color: #e2e8f0;
-    }
-    
-    /* Dataframe */
-    .stDataFrame {
-        background: #1e293b;
-        border-radius: 12px;
-        border: 1px solid #334155;
-    }
-    
-    /* Inputs */
-    .stSelectbox, .stTextInput, .stNumberInput, .stTextArea {
-        background-color: #1e293b;
-        border-radius: 8px;
-        color: #f1f5f9;
-    }
-    
-    .stSelectbox label, .stTextInput label {
-        color: #cbd5e1;
-    }
-    
     /* Botones */
     .stButton button {
         background: linear-gradient(90deg, #3b82f6, #2563eb);
@@ -183,7 +157,7 @@ st.markdown("""
         box-shadow: 0 5px 20px rgba(59,130,246,0.4);
     }
     
-    /* Info/Success/Warning boxes */
+    /* Info boxes */
     .stAlert {
         background-color: #1e293b;
         border-left: 4px solid #3b82f6;
@@ -198,7 +172,7 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Badges para marcas sin fichas */
+    /* Badges */
     .no-data-badge {
         background-color: #ef4444;
         color: white;
@@ -216,11 +190,6 @@ st.markdown("""
     
     [data-testid="stMetricLabel"] {
         color: #cbd5e1;
-    }
-    
-    /* Checkboxes */
-    .stCheckbox label {
-        color: #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -309,6 +278,23 @@ def guardar_progreso(progreso):
     except:
         return False
 
+def cargar_series_procesadas():
+    if os.path.exists(SERIES_PROCESSED_FILE):
+        try:
+            with open(SERIES_PROCESSED_FILE, 'r', encoding='utf-8') as f:
+                return set(json.load(f))
+        except:
+            return set()
+    return set()
+
+def guardar_series_procesadas(series):
+    try:
+        with open(SERIES_PROCESSED_FILE, 'w', encoding='utf-8') as f:
+            json.dump(list(series), f, ensure_ascii=False, indent=2)
+        return True
+    except:
+        return False
+
 def exportar_progreso():
     progreso = cargar_progreso()
     return json.dumps(progreso, ensure_ascii=False, indent=2)
@@ -321,12 +307,15 @@ def importar_progreso(archivo_json):
     except:
         return False
 
-def buscar_y_marcar_series(series_list, df):
-    """Busca cada serie en la descripción del producto y la marca como completada"""
+def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
+    """Busca nuevas series en la descripción del producto y las marca como completadas"""
+    nuevas_series_unicas = [s for s in nuevas_series if s not in series_procesadas]
+    duplicados = [s for s in nuevas_series if s in series_procesadas]
+    
     encontradas = []
     no_encontradas = []
     
-    for serie in series_list:
+    for serie in nuevas_series_unicas:
         serie_limpia = serie.strip()
         if not serie_limpia:
             continue
@@ -334,9 +323,8 @@ def buscar_y_marcar_series(series_list, df):
         # Buscar coincidencia exacta en el producto
         encontrada = False
         for _, row in df.iterrows():
-            if serie_limpia in row['Producto']:
+            if serie_limpia in str(row['Producto']):
                 encontrada = True
-                # Marcar como completada
                 st.session_state.progreso[row['ID']] = True
                 encontradas.append({
                     'Serie': serie_limpia,
@@ -349,35 +337,70 @@ def buscar_y_marcar_series(series_list, df):
         if not encontrada:
             no_encontradas.append(serie_limpia)
     
+    # Actualizar series procesadas
+    series_procesadas.update(nuevas_series_unicas)
+    guardar_series_procesadas(series_procesadas)
     guardar_progreso(st.session_state.progreso)
-    return encontradas, no_encontradas
+    
+    return encontradas, no_encontradas, duplicados
 
 def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
     """Exporta a Excel el progreso con series encontradas y no encontradas"""
     output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Hoja 1: Series encontradas (completadas)
-        if series_encontradas:
-            df_encontradas = pd.DataFrame(series_encontradas)
-            df_encontradas.to_excel(writer, sheet_name='Series Encontradas', index=False)
-        
-        # Hoja 2: Series no encontradas (pendientes)
-        if series_no_encontradas:
-            df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
-            df_no_encontradas.to_excel(writer, sheet_name='Series No Encontradas', index=False)
-        
-        # Hoja 3: Resumen de fichas por marca
-        resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
-        resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
-            lambda x: sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df[df['Marca'] == x].iterrows())
-        )
-        resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
-        resumen_marcas.to_excel(writer, sheet_name='Resumen por Marca', index=False)
-        
-        # Hoja 4: Todas las fichas con estado
-        df_con_estado = df.copy()
-        df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
-        df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_excel(writer, sheet_name='Todas las Fichas', index=False)
+    
+    try:
+        from openpyxl import Workbook
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Hoja 1: Series encontradas
+            if series_encontradas:
+                df_encontradas = pd.DataFrame(series_encontradas)
+                df_encontradas.to_excel(writer, sheet_name='Series Encontradas', index=False)
+            else:
+                pd.DataFrame({'Mensaje': ['No hay series encontradas']}).to_excel(writer, sheet_name='Series Encontradas', index=False)
+            
+            # Hoja 2: Series no encontradas
+            if series_no_encontradas:
+                df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
+                df_no_encontradas.to_excel(writer, sheet_name='Series No Encontradas', index=False)
+            else:
+                pd.DataFrame({'Mensaje': ['Todas las series fueron encontradas']}).to_excel(writer, sheet_name='Series No Encontradas', index=False)
+            
+            # Hoja 3: Resumen de fichas por marca
+            resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
+            resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
+                lambda x: sum(1 for _, row in df[df['Marca'] == x].iterrows() if st.session_state.progreso.get(row['ID'], False))
+            )
+            resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
+            resumen_marcas['Porcentaje'] = (resumen_marcas['Completadas'] / resumen_marcas['Total Fichas'] * 100).round(1)
+            resumen_marcas.to_excel(writer, sheet_name='Resumen por Marca', index=False)
+            
+            # Hoja 4: Detalle por categoría de cada marca
+            detalle_categorias = []
+            for marca in df['Marca'].unique():
+                df_marca = df[df['Marca'] == marca]
+                for categoria in df_marca['Categoría'].unique():
+                    df_cat = df_marca[df_marca['Categoría'] == categoria]
+                    total = len(df_cat)
+                    completadas = sum(1 for _, row in df_cat.iterrows() if st.session_state.progreso.get(row['ID'], False))
+                    detalle_categorias.append({
+                        'Marca': marca,
+                        'Categoría': categoria,
+                        'Total Fichas': total,
+                        'Completadas': completadas,
+                        'Pendientes': total - completadas,
+                        'Porcentaje': (completadas / total * 100) if total > 0 else 0
+                    })
+            
+            df_detalle = pd.DataFrame(detalle_categorias)
+            df_detalle.to_excel(writer, sheet_name='Detalle por Categoría', index=False)
+            
+            # Hoja 5: Todas las fichas con estado
+            df_con_estado = df.copy()
+            df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
+            df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_excel(writer, sheet_name='Todas las Fichas', index=False)
+    except Exception as e:
+        st.error(f"Error al exportar Excel: {e}")
+        return None
     
     output.seek(0)
     return output
@@ -387,6 +410,12 @@ if 'progreso' not in st.session_state:
     st.session_state.progreso = cargar_progreso()
 if 'df_actual' not in st.session_state:
     st.session_state.df_actual = None
+if 'series_procesadas' not in st.session_state:
+    st.session_state.series_procesadas = cargar_series_procesadas()
+if 'ultimas_encontradas' not in st.session_state:
+    st.session_state.ultimas_encontradas = []
+if 'ultimas_no_encontradas' not in st.session_state:
+    st.session_state.ultimas_no_encontradas = []
 
 # Título principal
 st.markdown("""
@@ -424,10 +453,14 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🏭 Marcas Reconocidas")
     st.markdown(f"**{len(MARCAS_COMPLETAS)} marcas** cargadas en el sistema")
+    
+    st.markdown("---")
+    st.markdown(f"### 📊 Series Procesadas")
+    st.metric("Total series únicas procesadas", len(st.session_state.series_procesadas))
 
 # Procesar archivo
 if archivo is not None:
-    with st.spinner('🔄 Procesando archivo... Esto puede tomar unos segundos'):
+    with st.spinner('🔄 Procesando archivo...'):
         df = procesar_json(archivo)
         st.session_state.df_actual = df
     
@@ -513,35 +546,43 @@ if archivo is not None:
         else:
             st.success("✅ ¡Todas las marcas tienen fichas cargadas!")
         
-        # Panel de progreso por marca
+        # Panel de progreso por marca CON EXPANDER PARA CATEGORÍAS
         st.markdown("---")
         st.markdown("### 📈 Panel de Progreso por Marca")
         
-        progreso_marcas = []
-        for marca in df['Marca'].unique():
+        for marca in sorted(df['Marca'].unique()):
             df_marca = df[df['Marca'] == marca]
             total_marca = len(df_marca)
             completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
             porcentaje_marca = (completadas_marca / total_marca) * 100 if total_marca > 0 else 0
-            progreso_marcas.append({
-                'Marca': marca,
-                'Total': total_marca,
-                'Completadas': completadas_marca,
-                'Porcentaje': porcentaje_marca
-            })
-        
-        df_progreso_marcas = pd.DataFrame(progreso_marcas).sort_values('Porcentaje', ascending=False)
-        
-        fig_progreso = px.bar(df_progreso_marcas.head(15), 
-                              x='Porcentaje', y='Marca', orientation='h',
-                              title='Progreso por Marca (% Completado)',
-                              text='Porcentaje',
-                              color='Porcentaje',
-                              color_continuous_scale='RdYlGn',
-                              range_color=[0, 100])
-        fig_progreso.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-        fig_progreso.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_progreso, use_container_width=True)
+            
+            # Barra de progreso de la marca
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{marca}** - {completadas_marca}/{total_marca} fichas")
+                st.progress(porcentaje_marca / 100)
+            with col2:
+                st.markdown(f"`{porcentaje_marca:.1f}%`")
+            
+            # Expander con detalle por categoría
+            with st.expander(f"Ver detalle por categoría - {marca}"):
+                for categoria in sorted(df_marca['Categoría'].unique()):
+                    df_categoria = df_marca[df_marca['Categoría'] == categoria]
+                    total_cat = len(df_categoria)
+                    completadas_cat = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_categoria.iterrows())
+                    porcentaje_cat = (completadas_cat / total_cat) * 100 if total_cat > 0 else 0
+                    
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    with col1:
+                        st.markdown(f"📁 **{categoria}**")
+                    with col2:
+                        st.markdown(f"{completadas_cat}/{total_cat} fichas")
+                    with col3:
+                        st.markdown(f"`{porcentaje_cat:.1f}%`")
+                    
+                    # Mini barra de progreso por categoría
+                    st.progress(porcentaje_cat / 100)
+                    st.markdown("---")
         
         # Tabs
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
@@ -640,14 +681,23 @@ if archivo is not None:
                         fig_estados_cat.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig_estados_cat, use_container_width=True)
         
-        # NUEVA PESTAÑA: Carga Masiva de Series
+        # PESTAÑA: Carga Masiva de Series MEJORADA
         with tab5:
             st.markdown("### 📦 Carga Masiva de Números de Serie")
             st.markdown("Pega una lista de números de serie (uno por línea) para buscar coincidencias exactas en las descripciones de los productos.")
-            st.info("💡 **Formato aceptado:**\n- Un número de serie por línea\n- Hasta 10,000 series\n- Busca coincidencia EXACTA en la descripción del producto")
+            st.info("💡 **Características:**\n- ✅ Detecta series duplicadas automáticamente\n- ✅ Acumula series nuevas sin perder el progreso anterior\n- ✅ Busca coincidencia EXACTA en la descripción del producto")
+            
+            # Mostrar series ya procesadas
+            with st.expander(f"📊 Ver series ya procesadas ({len(st.session_state.series_procesadas)} únicas)"):
+                if st.session_state.series_procesadas:
+                    st.write(list(st.session_state.series_procesadas)[:100])
+                    if len(st.session_state.series_procesadas) > 100:
+                        st.caption(f"... y {len(st.session_state.series_procesadas) - 100} más")
+                else:
+                    st.info("Aún no has procesado ninguna serie")
             
             series_input = st.text_area(
-                "📝 Ingresa los números de serie (uno por línea):",
+                "📝 Ingresa NUEVOS números de serie (uno por línea):",
                 height=200,
                 placeholder="Ejemplo:\nM70SG51016201\nM70SG51016201SI\nM70SG51016211\nN50S67161F*\nNEO55SR716100"
             )
@@ -655,19 +705,35 @@ if archivo is not None:
             col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("🔍 Buscar y Marcar Series", type="primary"):
+                if st.button("🔍 Buscar y Marcar NUEVAS Series", type="primary"):
                     if series_input.strip():
-                        series_list = [s.strip() for s in series_input.strip().split('\n') if s.strip()]
+                        nuevas_series = [s.strip() for s in series_input.strip().split('\n') if s.strip()]
                         
-                        with st.spinner(f'Buscando {len(series_list)} series...'):
-                            encontradas, no_encontradas = buscar_y_marcar_series(series_list, df)
+                        with st.spinner(f'Buscando {len(nuevas_series)} series nuevas...'):
+                            encontradas, no_encontradas, duplicados = buscar_y_marcar_series(
+                                nuevas_series, df, st.session_state.series_procesadas
+                            )
+                            
+                            st.session_state.ultimas_encontradas = encontradas
+                            st.session_state.ultimas_no_encontradas = no_encontradas
                             
                             st.success(f"✅ Búsqueda completada!")
-                            st.metric("Series encontradas", len(encontradas))
-                            st.metric("Series NO encontradas", len(no_encontradas))
+                            
+                            col_a, col_b, col_c = st.columns(3)
+                            with col_a:
+                                st.metric("✅ Nuevas encontradas", len(encontradas))
+                            with col_b:
+                                st.metric("❌ Nuevas NO encontradas", len(no_encontradas))
+                            with col_c:
+                                st.metric("🔄 Duplicados (omitidos)", len(duplicados))
+                            
+                            if duplicados:
+                                st.warning(f"⚠️ Series duplicadas omitidas: {', '.join(duplicados[:10])}")
+                                if len(duplicados) > 10:
+                                    st.caption(f"... y {len(duplicados) - 10} más")
                             
                             if encontradas:
-                                st.markdown("#### ✅ Series encontradas:")
+                                st.markdown("#### ✅ Series encontradas y marcadas:")
                                 st.dataframe(pd.DataFrame(encontradas), use_container_width=True)
                             
                             if no_encontradas:
@@ -675,24 +741,30 @@ if archivo is not None:
                                 st.write(no_encontradas[:50])
                                 if len(no_encontradas) > 50:
                                     st.caption(f"... y {len(no_encontradas) - 50} más")
+                            
+                            # Mostrar progreso actualizado
+                            fichas_completadas = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df.iterrows())
+                            porcentaje_total = (fichas_completadas / len(df)) * 100 if len(df) > 0 else 0
+                            st.info(f"📊 Progreso total actual: **{porcentaje_total:.1f}%** ({fichas_completadas}/{len(df)} fichas completadas)")
                     else:
                         st.warning("⚠️ Por favor ingresa al menos un número de serie")
             
             with col2:
-                # Botón para exportar Excel con el progreso actual
+                # Botón para exportar Excel
                 if st.button("📊 Exportar a Excel (Progreso Actual)"):
-                    series_encontradas = []
-                    series_no_encontradas = []
-                    
-                    # Generar Excel con el progreso actual
-                    excel_file = exportar_excel_progreso(df, series_encontradas, series_no_encontradas)
-                    
-                    st.download_button(
-                        label="📥 Descargar Excel",
-                        data=excel_file,
-                        file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    excel_file = exportar_excel_progreso(
+                        df, 
+                        st.session_state.ultimas_encontradas, 
+                        st.session_state.ultimas_no_encontradas
                     )
+                    
+                    if excel_file:
+                        st.download_button(
+                            label="📥 Descargar Excel",
+                            data=excel_file,
+                            file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
         
         with tab6:
             st.markdown("### ✅ Revisión de Fichas")
