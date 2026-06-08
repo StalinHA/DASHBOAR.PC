@@ -1,23 +1,4 @@
-# Core dependencies - Compatible con Python 3.13
-streamlit
+streamlit>=1.28.0
 pandas
 plotly
 openpyxl
-
-# Dependencias necesarias para pandas y streamlit
-numpy
-python-dateutil
-pytz
-six
-tzdata
-
-# Para manejo de imágenes (si las usas)
-pillow
-
-# Para operaciones numéricas adicionales
-packaging
-werkzeug
-click
-blinker
-
-
