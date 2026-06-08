@@ -321,7 +321,7 @@ def importar_progreso(archivo_json):
         return False
 
 def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
-    """Busca nuevas series en la descripción del producto y las marca como completadas"""
+    """Busca NUEVAS series con coincidencia EXACTA (no parcial) en la descripción del producto"""
     nuevas_series_unicas = [s for s in nuevas_series if s not in series_procesadas]
     duplicados = [s for s in nuevas_series if s in series_procesadas]
     
@@ -331,16 +331,22 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
     # Diccionario para rastrear qué series ya asignamos a qué fichas
     series_asignadas = {}
     
-    for serie in nuevas_series_unicas:
+    # Crear conjunto de series a buscar
+    series_a_buscar = set(nuevas_series_unicas)
+    
+    for serie in series_a_buscar:
         serie_limpia = serie.strip()
         if not serie_limpia:
             continue
             
-        # Buscar coincidencia exacta en el producto
+        # Buscar coincidencia EXACTA (con límites de palabra)
         encontrada = False
         for _, row in df.iterrows():
-            if serie_limpia in str(row['Producto']):
-                # Verificar si esta serie ya fue asignada a otra ficha
+            producto = str(row['Producto'])
+            # Usar expresión regular para coincidencia exacta de palabra completa
+            patron = r'(?<![a-zA-Z0-9])' + re.escape(serie_limpia) + r'(?![a-zA-Z0-9-])'
+            if re.search(patron, producto, re.IGNORECASE):
+                # Verificar si esta serie ya fue asignada
                 if serie_limpia not in series_asignadas:
                     series_asignadas[serie_limpia] = row['ID']
                     st.session_state.progreso[row['ID']] = True
@@ -354,7 +360,6 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
                     encontrada = True
                     break
                 else:
-                    # Ya fue asignada, no marcar otra vez
                     encontrada = True
                     break
         
@@ -362,126 +367,100 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
             no_encontradas.append(serie_limpia)
     
     # Actualizar series procesadas
-    series_procesadas.update(nuevas_series_unicas)
+    series_procesadas.update(series_a_buscar)
     guardar_series_procesadas(series_procesadas)
     guardar_progreso(st.session_state.progreso)
     
     return encontradas, no_encontradas, duplicados
 
 def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
-    """Exporta a Excel el progreso con series encontradas y no encontradas"""
+    """Exporta a Excel REAL con todas las hojas requeridas"""
     output = BytesIO()
     
     try:
-        # Intentar con openpyxl primero
-        from openpyxl import Workbook
+        # Usar openpyxl como engine
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             # Hoja 1: Series encontradas
             if series_encontradas:
                 df_encontradas = pd.DataFrame(series_encontradas)
                 df_encontradas.to_excel(writer, sheet_name='Series Encontradas', index=False)
             else:
-                pd.DataFrame({'Mensaje': ['No hay series encontradas']}).to_excel(writer, sheet_name='Series Encontradas', index=False)
+                pd.DataFrame({'Mensaje': ['No hay series encontradas para esta carga']}).to_excel(
+                    writer, sheet_name='Series Encontradas', index=False
+                )
             
             # Hoja 2: Series no encontradas
             if series_no_encontradas:
                 df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
                 df_no_encontradas.to_excel(writer, sheet_name='Series No Encontradas', index=False)
             else:
-                pd.DataFrame({'Mensaje': ['Todas las series fueron encontradas']}).to_excel(writer, sheet_name='Series No Encontradas', index=False)
+                pd.DataFrame({'Mensaje': ['Todas las series fueron encontradas']}).to_excel(
+                    writer, sheet_name='Series No Encontradas', index=False
+                )
             
             # Hoja 3: Resumen de fichas por marca
-            resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
-            resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
-                lambda x: sum(1 for _, row in df[df['Marca'] == x].iterrows() if st.session_state.progreso.get(row['ID'], False))
-            )
-            resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
-            resumen_marcas['Porcentaje'] = (resumen_marcas['Completadas'] / resumen_marcas['Total Fichas'] * 100).round(1)
-            resumen_marcas.to_excel(writer, sheet_name='Resumen por Marca', index=False)
-            
-            # Hoja 4: Detalle por categoría
-            detalle_categorias = []
+            resumen_marcas = []
             for marca in df['Marca'].unique():
                 df_marca = df[df['Marca'] == marca]
-                for categoria in df_marca['Categoría'].unique():
+                total = len(df_marca)
+                completadas = sum(1 for _, row in df_marca.iterrows() if st.session_state.progreso.get(row['ID'], False))
+                pendientes = total - completadas
+                porcentaje = (completadas / total * 100) if total > 0 else 0
+                resumen_marcas.append({
+                    'Marca': marca,
+                    'Total Fichas': total,
+                    'Completadas': completadas,
+                    'Pendientes': pendientes,
+                    'Porcentaje Completado': round(porcentaje, 1)
+                })
+            
+            df_resumen = pd.DataFrame(resumen_marcas).sort_values('Marca')
+            df_resumen.to_excel(writer, sheet_name='Resumen por Marca', index=False)
+            
+            # Hoja 4: Detalle por categoría de cada marca
+            detalle_categorias = []
+            for marca in sorted(df['Marca'].unique()):
+                df_marca = df[df['Marca'] == marca]
+                for categoria in sorted(df_marca['Categoría'].unique()):
                     df_cat = df_marca[df_marca['Categoría'] == categoria]
                     total = len(df_cat)
                     completadas = sum(1 for _, row in df_cat.iterrows() if st.session_state.progreso.get(row['ID'], False))
+                    pendientes = total - completadas
+                    porcentaje = (completadas / total * 100) if total > 0 else 0
                     detalle_categorias.append({
                         'Marca': marca,
                         'Categoría': categoria,
                         'Total Fichas': total,
                         'Completadas': completadas,
-                        'Pendientes': total - completadas,
-                        'Porcentaje': (completadas / total * 100) if total > 0 else 0
+                        'Pendientes': pendientes,
+                        'Porcentaje Completado': round(porcentaje, 1)
                     })
             
             df_detalle = pd.DataFrame(detalle_categorias)
             df_detalle.to_excel(writer, sheet_name='Detalle por Categoría', index=False)
             
-            # Hoja 5: Todas las fichas
+            # Hoja 5: Todas las fichas con estado de revisión
             df_con_estado = df.copy()
-            df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
-            df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_excel(writer, sheet_name='Todas las Fichas', index=False)
-    except ImportError:
-        # Si no hay openpyxl, usar ZIP con CSV
-        st.warning("⚠️ Generando archivo ZIP con CSVs...")
-        return exportar_csv_zip_progreso(df, series_encontradas, series_no_encontradas)
+            df_con_estado['Estado Revision'] = df_con_estado['ID'].apply(
+                lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE'
+            )
+            df_con_estado['Producto_Resumido'] = df_con_estado['Producto'].str[:150]
+            df_export = df_con_estado[['Marca', 'Categoría', 'Estado', 'Estado Revision', 'Número de Parte', 'Producto_Resumido']]
+            df_export.to_excel(writer, sheet_name='Todas las Fichas', index=False)
+            
+            # Hoja 6: Progreso General
+            total_fichas = len(df)
+            total_completadas = sum(1 for _, row in df.iterrows() if st.session_state.progreso.get(row['ID'], False))
+            df_progreso_general = pd.DataFrame({
+                'Metrica': ['Total Fichas', 'Fichas Completadas', 'Fichas Pendientes', 'Porcentaje Completado'],
+                'Valor': [total_fichas, total_completadas, total_fichas - total_completadas, 
+                          round(total_completadas / total_fichas * 100, 1) if total_fichas > 0 else 0]
+            })
+            df_progreso_general.to_excel(writer, sheet_name='Progreso General', index=False)
+            
     except Exception as e:
         st.error(f"Error al exportar Excel: {e}")
         return None
-    
-    output.seek(0)
-    return output
-
-def exportar_csv_zip_progreso(df, series_encontradas, series_no_encontradas):
-    """Exporta a ZIP con CSVs cuando openpyxl no está disponible"""
-    output = BytesIO()
-    
-    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        # Series encontradas
-        if series_encontradas:
-            df_encontradas = pd.DataFrame(series_encontradas)
-            zipf.writestr('series_encontradas.csv', df_encontradas.to_csv(index=False, encoding='utf-8-sig'))
-        
-        # Series no encontradas
-        if series_no_encontradas:
-            df_no_encontradas = pd.DataFrame({'Serie': series_no_encontradas})
-            zipf.writestr('series_no_encontradas.csv', df_no_encontradas.to_csv(index=False, encoding='utf-8-sig'))
-        
-        # Resumen por marca
-        resumen_marcas = df.groupby('Marca').size().reset_index(name='Total Fichas')
-        resumen_marcas['Completadas'] = resumen_marcas['Marca'].apply(
-            lambda x: sum(1 for _, row in df[df['Marca'] == x].iterrows() if st.session_state.progreso.get(row['ID'], False))
-        )
-        resumen_marcas['Pendientes'] = resumen_marcas['Total Fichas'] - resumen_marcas['Completadas']
-        resumen_marcas['Porcentaje'] = (resumen_marcas['Completadas'] / resumen_marcas['Total Fichas'] * 100).round(1)
-        zipf.writestr('resumen_por_marca.csv', resumen_marcas.to_csv(index=False, encoding='utf-8-sig'))
-        
-        # Detalle por categoría
-        detalle_categorias = []
-        for marca in df['Marca'].unique():
-            df_marca = df[df['Marca'] == marca]
-            for categoria in df_marca['Categoría'].unique():
-                df_cat = df_marca[df_marca['Categoría'] == categoria]
-                total = len(df_cat)
-                completadas = sum(1 for _, row in df_cat.iterrows() if st.session_state.progreso.get(row['ID'], False))
-                detalle_categorias.append({
-                    'Marca': marca,
-                    'Categoría': categoria,
-                    'Total Fichas': total,
-                    'Completadas': completadas,
-                    'Pendientes': total - completadas,
-                    'Porcentaje': (completadas / total * 100) if total > 0 else 0
-                })
-        
-        df_detalle = pd.DataFrame(detalle_categorias)
-        zipf.writestr('detalle_por_categoria.csv', df_detalle.to_csv(index=False, encoding='utf-8-sig'))
-        
-        # Todas las fichas
-        df_con_estado = df.copy()
-        df_con_estado['Revisado'] = df_con_estado['ID'].apply(lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE')
-        zipf.writestr('todas_las_fichas.csv', df_con_estado[['Marca', 'Categoría', 'Producto', 'Estado', 'Revisado']].to_csv(index=False, encoding='utf-8-sig'))
     
     output.seek(0)
     return output
@@ -803,7 +782,7 @@ if archivo is not None:
         with tab5:
             st.markdown("### 📦 Carga Masiva de Números de Serie")
             st.markdown("Pega una lista de números de serie (uno por línea) para buscar coincidencias exactas en las descripciones de los productos.")
-            st.info("💡 **Características:**\n- ✅ Detecta series duplicadas automáticamente\n- ✅ Acumula series nuevas sin perder el progreso anterior\n- ✅ Cada serie se asigna a UNA SOLA ficha\n- ✅ Busca coincidencia EXACTA en la descripción del producto")
+            st.info("💡 **Características:**\n- ✅ Detecta series duplicadas automáticamente\n- ✅ Acumula series nuevas sin perder el progreso anterior\n- ✅ Coincidencia EXACTA (no parcial)\n- ✅ Cada serie se asigna a UNA SOLA ficha")
             
             # Mostrar series ya procesadas
             with st.expander(f"📊 Ver series ya procesadas ({len(st.session_state.series_procesadas)} únicas)"):
@@ -818,7 +797,7 @@ if archivo is not None:
             series_input = st.text_area(
                 "📝 Ingresa NUEVOS números de serie (uno por línea):",
                 height=200,
-                placeholder="Ejemplo:\nM70SG51016201\nM70SG51016201SI\nM70SG51016211\nN50S67161F*\nNEO55SR716100"
+                placeholder="Ejemplo:\nLH75WAFWLGCXZX\nLH75WAFWLGCXZX-RM\nLH86WAFPLGCXZX"
             )
             
             col1, col2 = st.columns(2)
@@ -875,8 +854,8 @@ if archivo is not None:
                         st.warning("⚠️ Por favor ingresa al menos un número de serie")
             
             with col2:
-                # Botón para exportar Excel/CSV
-                if st.button("📊 Exportar a Excel/CSV (Progreso Actual)"):
+                # Botón para exportar Excel
+                if st.button("📊 Exportar a Excel (Progreso Actual)"):
                     excel_file = exportar_excel_progreso(
                         df, 
                         st.session_state.ultimas_encontradas, 
@@ -884,13 +863,11 @@ if archivo is not None:
                     )
                     
                     if excel_file:
-                        # Determinar si es Excel o ZIP
-                        file_ext = "xlsx" if "openpyxl" in str(type(excel_file)) or excel_file.getvalue()[:4] == b'PK\x03\x04' else "xlsx"
                         st.download_button(
-                            label="📥 Descargar reporte",
+                            label="📥 Descargar Excel",
                             data=excel_file,
-                            file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{'xlsx' if 'openpyxl' in str(type(excel_file)) else 'zip'}",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if 'openpyxl' in str(type(excel_file)) else "application/zip"
+                            file_name=f"progreso_perucompras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
         
         with tab6:
