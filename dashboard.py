@@ -9,6 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import os
 import zipfile
+import hashlib
 
 # Configuracion de la pagina
 st.set_page_config(
@@ -217,10 +218,17 @@ def extraer_numero_parte(producto):
     
     return "N/D"
 
+def generar_id_unico(marca, catalogo, categoria, producto, indice):
+    """Genera un ID unico para cada ficha usando hash del contenido completo"""
+    contenido = f"{marca}_{catalogo}_{categoria}_{producto}_{indice}"
+    hash_id = hashlib.md5(contenido.encode('utf-8')).hexdigest()[:12]
+    return f"{marca}_{hash_id}"
+
 def procesar_json(archivo):
     try:
         datos = json.load(archivo)
         fichas = []
+        contador_fichas = 0
         
         if 'catalogos' in datos:
             for catalogo in datos['catalogos']:
@@ -230,8 +238,9 @@ def procesar_json(archivo):
                     for ficha in categoria.get('fichas', []):
                         producto = ficha.get('producto', '')
                         marca = extraer_marca(producto)
-                        # ID UNICO: incluye marca para evitar conflictos
-                        ficha_id = f"{marca}_{nombre_catalogo}_{nombre_categoria}_{producto[:50]}"
+                        contador_fichas += 1
+                        # ID UNICO para cada ficha individual
+                        ficha_id = generar_id_unico(marca, nombre_catalogo, nombre_categoria, producto, contador_fichas)
                         fichas.append({
                             'ID': ficha_id,
                             'Catalogo': nombre_catalogo,
@@ -305,6 +314,7 @@ def comparacion_exacta(texto_producto, numero_parte_buscar):
 def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
     """
     Busca NUEVAS series con coincidencia EXACTA y asigna progreso SOLO a la ficha correcta
+    Cada ficha tiene un ID unico
     """
     nuevas_series_unicas = [s for s in nuevas_series if s not in series_procesadas]
     duplicados = [s for s in nuevas_series if s in series_procesadas]
@@ -379,7 +389,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
                     writer, sheet_name='Numeros de Parte No Encontrados', index=False
                 )
             
-            # Resumen de fichas por marca (SOLO con el progreso real)
+            # Resumen de fichas por marca
             resumen_marcas = []
             for marca in df['Marca'].unique():
                 df_marca = df[df['Marca'] == marca]
@@ -625,7 +635,12 @@ if archivo is not None:
             df_marca = df[df['Marca'] == marca]
             total_marca = len(df_marca)
             # Contar SOLO las fichas completadas de ESTA marca especifica
-            completadas_marca = sum(1 for _, row in df_marca.iterrows() if st.session_state.progreso.get(row['ID'], False))
+            # Cada ficha tiene un ID unico, asi que no se duplican
+            completadas_marca = 0
+            for _, row in df_marca.iterrows():
+                if st.session_state.progreso.get(row['ID'], False):
+                    completadas_marca += 1
+            
             porcentaje_marca = (completadas_marca / total_marca) * 100 if total_marca > 0 else 0
             
             # Barra de progreso de la marca
@@ -641,7 +656,10 @@ if archivo is not None:
                 for categoria in sorted(df_marca['Categoria'].unique()):
                     df_categoria = df_marca[df_marca['Categoria'] == categoria]
                     total_cat = len(df_categoria)
-                    completadas_cat = sum(1 for _, row in df_categoria.iterrows() if st.session_state.progreso.get(row['ID'], False))
+                    completadas_cat = 0
+                    for _, row in df_categoria.iterrows():
+                        if st.session_state.progreso.get(row['ID'], False):
+                            completadas_cat += 1
                     porcentaje_cat = (completadas_cat / total_cat) * 100 if total_cat > 0 else 0
                     
                     col1, col2, col3 = st.columns([2, 2, 1])
