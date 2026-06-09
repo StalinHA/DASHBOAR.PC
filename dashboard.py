@@ -35,15 +35,12 @@ MARCAS_COMPLETAS = [
 PROGRESS_FILE = "progreso_marcas.json"
 SERIES_PROCESSED_FILE = "series_procesadas.json"
 
-# CSS personalizado - Fondo oscuro elegante con buen contraste
+# CSS personalizado
 st.markdown("""
 <style>
-    /* Fondo principal - Azul noche */
     .stApp {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
     }
-    
-    /* Header - Gradiente azul brillante */
     .main-header {
         background: linear-gradient(90deg, #2563eb, #1e40af);
         padding: 2rem;
@@ -54,21 +51,17 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         border: 1px solid rgba(255,255,255,0.1);
     }
-    
     .main-header h1 {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
         font-weight: 700;
         color: white;
     }
-    
     .main-header p {
         font-size: 1.1rem;
         opacity: 0.95;
         color: #e2e8f0;
     }
-    
-    /* Tarjetas de estadisticas */
     .stat-card {
         background: rgba(30, 41, 59, 0.8);
         backdrop-filter: blur(10px);
@@ -79,12 +72,10 @@ st.markdown("""
         transition: transform 0.3s;
         border: 1px solid rgba(255,255,255,0.1);
     }
-    
     .stat-card:hover {
         transform: translateY(-5px);
         background: rgba(30, 41, 59, 0.9);
     }
-    
     .stat-number {
         font-size: 2.5rem;
         font-weight: bold;
@@ -93,56 +84,43 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    
     .stat-label {
         color: #cbd5e1;
         margin-top: 0.5rem;
         font-size: 0.9rem;
         font-weight: 500;
     }
-    
-    /* Sidebar */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f172a, #020617);
         border-right: 1px solid #334155;
     }
-    
     [data-testid="stSidebar"] .stMarkdown {
         color: #e2e8f0;
     }
-    
     [data-testid="stSidebar"] h1, 
     [data-testid="stSidebar"] h2, 
     [data-testid="stSidebar"] h3 {
         color: #f1f5f9;
     }
-    
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #1e293b;
         border-radius: 12px;
         padding: 6px;
     }
-    
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
         padding: 8px 20px;
         color: #cbd5e1;
         font-weight: 600;
     }
-    
     .stTabs [aria-selected="true"] {
         background: linear-gradient(90deg, #3b82f6, #2563eb);
         color: white;
     }
-    
-    /* Texto general */
     .stMarkdown, .stText, .stMetric label {
         color: #f1f5f9;
     }
-    
-    /* Botones */
     .stButton button {
         background: linear-gradient(90deg, #3b82f6, #2563eb);
         color: white;
@@ -152,28 +130,21 @@ st.markdown("""
         font-weight: 600;
         transition: all 0.3s;
     }
-    
     .stButton button:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 20px rgba(59,130,246,0.4);
     }
-    
-    /* Info boxes */
     .stAlert {
         background-color: #1e293b;
         border-left: 4px solid #3b82f6;
         color: #e2e8f0;
     }
-    
-    /* Expander */
     .streamlit-expanderHeader {
         background-color: #1e293b;
         border-radius: 8px;
         color: #f1f5f9;
         font-weight: 600;
     }
-    
-    /* Badges */
     .no-data-badge {
         background-color: #ef4444;
         color: white;
@@ -183,24 +154,17 @@ st.markdown("""
         font-weight: 600;
         display: inline-block;
     }
-    
-    /* Metrics */
     [data-testid="stMetricValue"] {
         color: #60a5fa;
     }
-    
     [data-testid="stMetricLabel"] {
         color: #cbd5e1;
     }
-    
-    /* Dataframe */
     .stDataFrame {
         background: #1e293b;
         border-radius: 12px;
         border: 1px solid #334155;
     }
-    
-    /* Checkboxes */
     .stCheckbox label {
         color: #e2e8f0;
     }
@@ -208,32 +172,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def extraer_marca(producto):
-    """Extrae la marca del producto de manera mas estricta y precisa"""
     if not producto:
         return "SIN MARCA"
     
     producto_upper = producto.upper()
     
-    # Buscar marcas exactas al inicio o como palabra completa
     for marca in sorted(MARCAS_COMPLETAS, key=len, reverse=True):
         marca_upper = marca.upper()
-        # Buscar la marca como palabra completa (con espacios alrededor o al inicio)
         patron = r'(?:^|\s)' + re.escape(marca_upper) + r'(?:\s|$)'
         if re.search(patron, producto_upper):
             return marca
     
-    # Si no se encuentra al inicio, buscar como parte del texto pero con boundaries
     for marca in sorted(MARCAS_COMPLETAS, key=len, reverse=True):
         marca_upper = marca.upper()
         if marca_upper in producto_upper:
-            # Verificar que no sea parte de otra palabra
             idx = producto_upper.find(marca_upper)
             antes = producto_upper[idx-1] if idx > 0 else ' '
             despues = producto_upper[idx+len(marca_upper)] if idx+len(marca_upper) < len(producto_upper) else ' '
             if not antes.isalnum() and not despues.isalnum():
                 return marca
     
-    # Buscar patron UNIDAD
     patron_unidad = re.search(r'UNIDAD\s+([A-Z\s]+?)(?:\s+|$)', producto_upper)
     if patron_unidad:
         posible = patron_unidad.group(1).strip()
@@ -246,7 +204,6 @@ def extraer_numero_parte(producto):
     if not producto:
         return "N/D"
     
-    # Buscar numeros de parte con caracteres especiales
     patrones = [
         r'UNIDAD\s+(?:[A-Z]+\s+)?([A-Z0-9]+(?:[-*#._][A-Z0-9]+)+)',
         r'([A-Z0-9]{4,}(?:[-*#._][A-Z0-9]{3,}))',
@@ -272,13 +229,15 @@ def procesar_json(archivo):
                     nombre_categoria = categoria.get('nombre', 'SIN CATEGORIA')
                     for ficha in categoria.get('fichas', []):
                         producto = ficha.get('producto', '')
-                        ficha_id = f"{nombre_catalogo}_{nombre_categoria}_{producto[:50]}"
+                        marca = extraer_marca(producto)
+                        # ID UNICO: incluye marca para evitar conflictos
+                        ficha_id = f"{marca}_{nombre_catalogo}_{nombre_categoria}_{producto[:50]}"
                         fichas.append({
                             'ID': ficha_id,
                             'Catalogo': nombre_catalogo,
                             'Categoria': nombre_categoria,
                             'Producto': producto,
-                            'Marca': extraer_marca(producto),
+                            'Marca': marca,
                             'Numero de Parte': extraer_numero_parte(producto),
                             'Estado': ficha.get('estado', 'SIN ESTADO'),
                             'Moneda': ficha.get('moneda', ''),
@@ -339,19 +298,13 @@ def importar_progreso(archivo_json):
         return False
 
 def comparacion_exacta(texto_producto, numero_parte_buscar):
-    """
-    Realiza una comparacion EXACTA caracter por caracter del numero de parte en el texto del producto.
-    Respeta guiones, puntos, asteriscos y cualquier caracter especial.
-    """
     if not texto_producto or not numero_parte_buscar:
         return False
-    
-    # Buscar el numero de parte como una subcadena EXACTA (caracter por caracter)
     return numero_parte_buscar in texto_producto
 
 def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
     """
-    Busca NUEVAS series con coincidencia EXACTA (caracter por caracter) en la descripcion del producto
+    Busca NUEVAS series con coincidencia EXACTA y asigna progreso SOLO a la ficha correcta
     """
     nuevas_series_unicas = [s for s in nuevas_series if s not in series_procesadas]
     duplicados = [s for s in nuevas_series if s in series_procesadas]
@@ -370,16 +323,16 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
         if not serie_limpia:
             continue
             
-        # Buscar coincidencia EXACTA (caracter por caracter)
+        # Buscar coincidencia EXACTA
         encontrada = False
         for _, row in df.iterrows():
             producto = str(row['Producto'])
             
-            # Usar comparacion exacta respetando todos los caracteres
             if comparacion_exacta(producto, serie_limpia):
                 # Verificar si esta serie ya fue asignada
                 if serie_limpia not in series_asignadas:
                     series_asignadas[serie_limpia] = row['ID']
+                    # Asignar progreso SOLO a esta ficha especifica
                     st.session_state.progreso[row['ID']] = True
                     encontradas.append({
                         'Numero de Parte': serie_limpia,
@@ -391,13 +344,14 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
                     encontrada = True
                     break
                 else:
+                    # La serie ya fue asignada a otra ficha
                     encontrada = True
                     break
         
         if not encontrada:
             no_encontradas.append(serie_limpia)
     
-    # Actualizar series procesadas
+    # Actualizar series procesadas y guardar progreso
     series_procesadas.update(series_a_buscar)
     guardar_series_procesadas(series_procesadas)
     guardar_progreso(st.session_state.progreso)
@@ -405,21 +359,18 @@ def buscar_y_marcar_series(nuevas_series, df, series_procesadas):
     return encontradas, no_encontradas, duplicados
 
 def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
-    """Exporta a Excel con todas las hojas requeridas"""
     output = BytesIO()
     
     try:
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Hoja 1: Numeros de parte encontrados
             if series_encontradas:
                 df_encontradas = pd.DataFrame(series_encontradas)
                 df_encontradas.to_excel(writer, sheet_name='Numeros de Parte Encontrados', index=False)
             else:
-                pd.DataFrame({'Mensaje': ['No hay numeros de parte encontrados para esta carga']}).to_excel(
+                pd.DataFrame({'Mensaje': ['No hay numeros de parte encontrados']}).to_excel(
                     writer, sheet_name='Numeros de Parte Encontrados', index=False
                 )
             
-            # Hoja 2: Numeros de parte no encontrados
             if series_no_encontradas:
                 df_no_encontradas = pd.DataFrame({'Numero de Parte': series_no_encontradas})
                 df_no_encontradas.to_excel(writer, sheet_name='Numeros de Parte No Encontrados', index=False)
@@ -428,7 +379,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
                     writer, sheet_name='Numeros de Parte No Encontrados', index=False
                 )
             
-            # Hoja 3: Resumen de fichas por marca
+            # Resumen de fichas por marca (SOLO con el progreso real)
             resumen_marcas = []
             for marca in df['Marca'].unique():
                 df_marca = df[df['Marca'] == marca]
@@ -447,7 +398,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
             df_resumen = pd.DataFrame(resumen_marcas).sort_values('Marca')
             df_resumen.to_excel(writer, sheet_name='Resumen por Marca', index=False)
             
-            # Hoja 4: Detalle por categoria
+            # Detalle por categoria
             detalle_categorias = []
             for marca in sorted(df['Marca'].unique()):
                 df_marca = df[df['Marca'] == marca]
@@ -469,7 +420,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
             df_detalle = pd.DataFrame(detalle_categorias)
             df_detalle.to_excel(writer, sheet_name='Detalle por Categoria', index=False)
             
-            # Hoja 5: Todas las fichas con estado
+            # Todas las fichas
             df_con_estado = df.copy()
             df_con_estado['Estado Revision'] = df_con_estado['ID'].apply(
                 lambda x: 'COMPLETADA' if st.session_state.progreso.get(x, False) else 'PENDIENTE'
@@ -478,7 +429,7 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
             df_export = df_con_estado[['Marca', 'Categoria', 'Estado', 'Estado Revision', 'Numero de Parte', 'Producto_Resumido']]
             df_export.to_excel(writer, sheet_name='Todas las Fichas', index=False)
             
-            # Hoja 6: Progreso General
+            # Progreso General
             total_fichas = len(df)
             total_completadas = sum(1 for _, row in df.iterrows() if st.session_state.progreso.get(row['ID'], False))
             df_progreso_general = pd.DataFrame({
@@ -496,7 +447,6 @@ def exportar_excel_progreso(df, series_encontradas, series_no_encontradas):
     return output
 
 def limpiar_progreso_por_marca(marca, df):
-    """Limpia el progreso de todas las fichas de una marca especifica"""
     fichas_marca = df[df['Marca'] == marca]['ID'].tolist()
     for ficha_id in fichas_marca:
         st.session_state.progreso.pop(ficha_id, None)
@@ -666,15 +616,16 @@ if archivo is not None:
         else:
             st.success("✅ ¡Todas las marcas tienen fichas cargadas!")
         
-        # Panel de progreso por marca CON EXPANDER PARA CATEGORIAS
+        # Panel de progreso por marca - CORREGIDO
         st.markdown("---")
         st.markdown("### 📈 Panel de Progreso por Marca")
         
-        # Mostrar solo las marcas que realmente tienen fichas
+        # Mostrar SOLO las marcas que tienen fichas en el DataFrame
         for marca in sorted(df['Marca'].unique()):
             df_marca = df[df['Marca'] == marca]
             total_marca = len(df_marca)
-            completadas_marca = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_marca.iterrows())
+            # Contar SOLO las fichas completadas de ESTA marca especifica
+            completadas_marca = sum(1 for _, row in df_marca.iterrows() if st.session_state.progreso.get(row['ID'], False))
             porcentaje_marca = (completadas_marca / total_marca) * 100 if total_marca > 0 else 0
             
             # Barra de progreso de la marca
@@ -690,7 +641,7 @@ if archivo is not None:
                 for categoria in sorted(df_marca['Categoria'].unique()):
                     df_categoria = df_marca[df_marca['Categoria'] == categoria]
                     total_cat = len(df_categoria)
-                    completadas_cat = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_categoria.iterrows())
+                    completadas_cat = sum(1 for _, row in df_categoria.iterrows() if st.session_state.progreso.get(row['ID'], False))
                     porcentaje_cat = (completadas_cat / total_cat) * 100 if total_cat > 0 else 0
                     
                     col1, col2, col3 = st.columns([2, 2, 1])
@@ -701,7 +652,6 @@ if archivo is not None:
                     with col3:
                         st.markdown(f"`{porcentaje_cat:.1f}%`")
                     
-                    # Mini barra de progreso por categoria
                     st.progress(porcentaje_cat / 100)
                     st.markdown("---")
         
@@ -783,11 +733,9 @@ if archivo is not None:
                 st.markdown("---")
                 st.markdown(f"#### 🏭 Marcas en la categoria **{categoria_analisis}**")
                 
-                # Contar fichas por marca en esta categoria
                 marcas_en_categoria = df_categoria['Marca'].value_counts().reset_index()
                 marcas_en_categoria.columns = ['Marca', 'Cantidad de Fichas']
                 
-                # Agregar columna de completadas por marca
                 marcas_en_categoria['Completadas'] = marcas_en_categoria['Marca'].apply(
                     lambda m: sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df_categoria[df_categoria['Marca'] == m].iterrows())
                 )
@@ -796,7 +744,6 @@ if archivo is not None:
                 
                 st.dataframe(marcas_en_categoria, use_container_width=True)
                 
-                # Grafico de barras
                 fig_marcas_cat = px.bar(marcas_en_categoria, x='Marca', y='Cantidad de Fichas',
                                         title=f'Distribucion de Marcas en {categoria_analisis}',
                                         text='Cantidad de Fichas', color='Cantidad de Fichas')
@@ -839,10 +786,9 @@ if archivo is not None:
         # PESTANA: Carga Masiva de Numeros de Parte
         with tab5:
             st.markdown("### 📦 Carga Masiva de Numeros de Parte")
-            st.markdown("Pega una lista de numeros de parte (uno por linea) para buscar coincidencias **EXACTAS** en las descripciones de los productos.")
-            st.info("💡 **Caracteristicas:**\n- ✅ Comparacion EXACTA caracter por caracter\n- ✅ Respeta guiones, puntos, asteriscos y caracteres especiales\n- ✅ Detecta numeros de parte duplicados automaticamente\n- ✅ Acumula numeros nuevos sin perder el progreso anterior\n- ✅ Cada numero de parte se asigna a UNA SOLA ficha")
+            st.markdown("Pega una lista de numeros de parte (uno por linea) para buscar coincidencias **EXACTAS**.")
+            st.info("💡 **Importante:** Cada numero de parte se asigna a UNA SOLA ficha. El progreso se acumula por marca.")
             
-            # Mostrar series ya procesadas
             with st.expander(f"📊 Ver numeros de parte ya procesados ({len(st.session_state.series_procesadas)} unicos)"):
                 if st.session_state.series_procesadas:
                     series_list = list(st.session_state.series_procesadas)
@@ -855,7 +801,7 @@ if archivo is not None:
             series_input = st.text_area(
                 "📝 Ingresa NUEVOS numeros de parte (uno por linea):",
                 height=200,
-                placeholder="Ejemplo:\nNEO55SR716100OH\nN50S67161F*\nM70SG6U743162000-OH\nABC-123-XYZ\nPARTE.001"
+                placeholder="Ejemplo:\nNEO55SR716100OH\nN50S67161F*\nM70SG6U743162000-OH"
             )
             
             col1, col2 = st.columns(2)
@@ -883,17 +829,12 @@ if archivo is not None:
                             with col_c:
                                 st.metric("🔄 Duplicados (omitidos)", len(duplicados))
                             
-                            if duplicados:
-                                st.warning(f"⚠️ Numeros de parte duplicados omitidos: {', '.join(duplicados[:10])}")
-                                if len(duplicados) > 10:
-                                    st.caption(f"... y {len(duplicados) - 10} mas")
-                            
                             if encontradas:
                                 st.markdown("#### ✅ Numeros de parte encontrados y marcados:")
                                 st.dataframe(pd.DataFrame(encontradas), use_container_width=True)
                                 
                                 # Resumen por marca
-                                st.markdown("#### 📊 Resumen por Marca de los numeros de parte encontrados:")
+                                st.markdown("#### 📊 Resumen por Marca:")
                                 df_resumen = pd.DataFrame(encontradas)
                                 if 'Marca' in df_resumen.columns:
                                     resumen_marcas_series = df_resumen.groupby('Marca').size().reset_index(name='Numeros de Parte Encontrados')
@@ -905,7 +846,6 @@ if archivo is not None:
                                 if len(no_encontradas) > 50:
                                     st.caption(f"... y {len(no_encontradas) - 50} mas")
                             
-                            # Mostrar progreso actualizado
                             fichas_completadas = sum(st.session_state.progreso.get(fila['ID'], False) for _, fila in df.iterrows())
                             porcentaje_total = (fichas_completadas / len(df)) * 100 if len(df) > 0 else 0
                             st.info(f"📊 Progreso total actual: **{porcentaje_total:.1f}%** ({fichas_completadas}/{len(df)} fichas completadas)")
@@ -913,7 +853,6 @@ if archivo is not None:
                         st.warning("⚠️ Por favor ingresa al menos un numero de parte")
             
             with col2:
-                # Boton para exportar Excel
                 if st.button("📊 Exportar a Excel (Progreso Actual)"):
                     excel_file = exportar_excel_progreso(
                         df, 
